@@ -10,24 +10,25 @@
 - First, When installing CentOS, it's easy to set ZFS by separating unused partitions for ZFS.
 
 ### Install ZFS
-- # rpm -Uvh http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
-- # yum install -y epel-release
-- # yum install -y kernel-devel zfs
-- # zpool list & lsmod | zfs
+- \# rpm -Uvh http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
+- \# yum install -y epel-release
+- \# yum install -y kernel-devel zfs
+- \# zpool list & lsmod | zfs
   - [no pools available] is OK.
-- # fdisk /dev/sdb
+- \# fdisk /dev/sdb
   - create zfs partition
-- # fdisk -l
+- \# fdisk -l
   - check zfs partition
   - ex) /dev/sdb3
-- # zpool create -f zfs /winpool sdb3
+- \# zpool create -f zfs /winpool sdb3
   - create windows pool on zfs storage
-- # df -h
+- \# df -h
   - check zfs pool (winpool)
-- # zfs list
+- \# zfs list
   - check zfs pool (winpool)
 
 ## Install DHCP Server
+- \# yum -y install dhcp
 - Add the following to dhcpd.conf
   - Subnet address, MAC address, etc should be adapted to each environment.
 ```
@@ -97,11 +98,38 @@ host win7-pxeboot {
     }
 }
 ```
+- \# systemctl start dhcpd
 
 ## Install TFTP Server
-- 
+- \# yum -y install tftp-server 
+- \# cd /var/lib/tftpboot/
+- \# mkdir pxeboot
+- \# cd pxeboot
+- \# wget http://boot.ipxe.org/undionly.kpxe
+- \# systemctl start tftp
+
 ## Install targetcli
+- \# yum -y install targetcli
+- \# targetcli
+- \# cd /backstores/fileio
+- \# create win7\_32 /winpool/win7\_32.img 30G
+- \# cd /iscsi
+- \# create iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00
+- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/portals
+- \# create 0.0.0.0
+- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/luns
+- \# create /backstores/fileio/win7\_32
+- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/acls
+- \# create iqn.2010-04.org.ipxe:ae9e2c81-5264-11cb-a57f-ee7146ed0767
+  - Write iqn of the initiator.
+  - Once you boot pxeboot, the iqn number is displayed in /var/log/messages.
+- \# exit
+- \# systemctl start targetcli
+
 ## Create Windows Installer
+
 ### Install AIK
+### Write .iso in DVD disk
 ## Install httpd
+### set Windows bootloder
 - set boot.sdi bcd 
