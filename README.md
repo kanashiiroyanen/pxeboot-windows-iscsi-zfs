@@ -10,6 +10,7 @@
 - First, When installing CentOS, it's easy to set ZFS by separating unused partitions for ZFS.
 
 ### Install ZFS
+```
 - \# rpm -Uvh http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
 - \# yum install -y epel-release
 - \# yum install -y kernel-devel zfs
@@ -26,6 +27,7 @@
   - check zfs pool (winpool)
 - \# zfs list
   - check zfs pool (winpool)
+```
 
 ## Install DHCP Server
 - \# yum -y install dhcp
@@ -98,17 +100,22 @@ host win7-pxeboot {
     }
 }
 ```
+```
 - \# systemctl start dhcpd
+```
 
 ## Install TFTP Server
+```
 - \# yum -y install tftp-server 
 - \# cd /var/lib/tftpboot/
 - \# mkdir pxeboot
 - \# cd pxeboot
 - \# wget http://boot.ipxe.org/undionly.kpxe
 - \# systemctl start tftp
+```
 
 ## Install targetcli
+```
 - \# yum -y install targetcli
 - \# targetcli
 - \# cd /backstores/fileio
@@ -125,6 +132,7 @@ host win7-pxeboot {
   - Once you boot pxeboot, the iqn number is displayed in /var/log/messages.
 - \# exit
 - \# systemctl start targetcli
+```
 
 ## Create Windows Installer
 
