@@ -1,5 +1,11 @@
 # Guide of PXEboot & Windows install on ZFS with iSCSI.
-## Machine Spec
+## Motivation
+- Malware analysis can be done on physical machine (not virtual machine).
+  - By using snapshot of ZFS, you can restore the original environment.
+  - More malware can be analyzed.
+- Diskless boot is possible.
+
+## Machine Spec (Tried environment)
 - iSCSI Target
   - NEC VersaPro (core i5, mem:4GB, nic:Intel)
   - OS: CentOS 7.5
@@ -11,26 +17,28 @@
 
 ### Install ZFS
 ```
-- \# rpm -Uvh http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
-- \# yum install -y epel-release
-- \# yum install -y kernel-devel zfs
-- \# zpool list & lsmod | zfs
+- # rpm -Uvh http://archive.zfsonlinux.org/epel/zfs-release.el7.noarch.rpm
+- # yum install -y epel-release
+- # yum install -y kernel-devel zfs
+- # zpool list & lsmod | zfs
   - [no pools available] is OK.
-- \# fdisk /dev/sdb
+- # fdisk /dev/sdb
   - create zfs partition
-- \# fdisk -l
+- # fdisk -l
   - check zfs partition
   - ex) /dev/sdb3
-- \# zpool create -f zfs /winpool sdb3
+- # zpool create -f zfs /winpool sdb3
   - create windows pool on zfs storage
-- \# df -h
+- # df -h
   - check zfs pool (winpool)
-- \# zfs list
+- # zfs list
   - check zfs pool (winpool)
 ```
 
 ## Install DHCP Server
-- \# yum -y install dhcp
+```
+- # yum -y install dhcp
+```
 - Add the following to dhcpd.conf
   - Subnet address, MAC address, etc should be adapted to each environment.
 ```
@@ -101,43 +109,78 @@ host win7-pxeboot {
 }
 ```
 ```
-- \# systemctl start dhcpd
+- # systemctl start dhcpd
 ```
 
 ## Install TFTP Server
 ```
-- \# yum -y install tftp-server 
-- \# cd /var/lib/tftpboot/
-- \# mkdir pxeboot
-- \# cd pxeboot
-- \# wget http://boot.ipxe.org/undionly.kpxe
-- \# systemctl start tftp
+- # yum -y install tftp-server 
+- # cd /var/lib/tftpboot/
+- # mkdir pxeboot
+- # cd pxeboot
+- # wget http://boot.ipxe.org/undionly.kpxe
+- # systemctl start tftp
 ```
 
 ## Install targetcli
 ```
-- \# yum -y install targetcli
-- \# targetcli
-- \# cd /backstores/fileio
-- \# create win7\_32 /winpool/win7\_32.img 30G
-- \# cd /iscsi
-- \# create iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00
-- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/portals
-- \# create 0.0.0.0
-- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/luns
-- \# create /backstores/fileio/win7\_32
-- \# cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/acls
-- \# create iqn.2010-04.org.ipxe:ae9e2c81-5264-11cb-a57f-ee7146ed0767
+- # yum -y install targetcli
+- # targetcli
+- # cd /backstores/fileio
+- # create win7\_32 /winpool/win7\_32.img 30G
+- # cd /iscsi
+- # create iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00
+- # cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/portals
+- # create 0.0.0.0
+- # cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/luns
+- # create /backstores/fileio/win7\_32
+- # cd iscsi:192.168.1.5::::iqn.2018-08.local.mylab:storage.target00/tpg1/acls
+- # create iqn.2010-04.org.ipxe:ae9e2c81-5264-11cb-a57f-ee7146ed0767
   - Write iqn of the initiator.
   - Once you boot pxeboot, the iqn number is displayed in /var/log/messages.
-- \# exit
-- \# systemctl start targetcli
+- # exit
+- # systemctl start targetcli
 ```
 
-## Create Windows Installer
+## Create original Windows Installer
+- In the environment of this initiator, NIC driver was not installed in Windows installer. Therefore, create an unique installer added NIC driver.
+- In this case, Windows PC is used here.
 
 ### Install AIK
 ### Write .iso in DVD disk
 ## Install httpd
-### set Windows bootloder
-- set boot.sdi bcd 
+```
+# yum -y install httpd
+# systemctl start httpd
+```
+### Set Windows bootloder on http server
+```
+- # mkdir /mnt/win7
+- # mount -o loop -t iso9660 win7-32.iso /mnt/win7
+- # cd /mnt/win7/boot
+- # mv boot/bcd boot.sdi /var/www/html/boot
+- # cd ../sources
+- # mv boot.wim /var/www/html/boot
+- # cd /var/www/html
+- # wget http://git.ipxe.org/releases/wimboot/wimboot-latest.zip
+- # unzip wimboot-latest.zip
+- # mv wimboot-latest/wimboot .
+- # rm -rf wimboot
+```
+### pxeboot start & ipxe command 
+- set the BIOS of initiator and priority to network boot
+- Stopping the firewall of centos
+```
+# systemctl stop firewalld
+```
+- When start ipxe bootloader and iqn load faild, push Ctrl + b
+- Input following command
+```
+kernel http://192.168.11.12/wimboot
+initrd http://192.168.11.12/boot/bcd BCD
+initrd http://192.168.11.12/boot/boot.sdi boot.sdi
+initrd http://192.168.11.12/boot/boot.wim boot.wim
+boot
+```
+- Hopefully, windows installer will launch.
+- enjoy:)
